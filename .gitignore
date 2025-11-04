@@ -1,0 +1,50 @@
+# Dependências
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Arquivos do editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Arquivos temporários
+*.tmp
+*.temp
+*.log
+
+# Arquivos de backup
+*.bak
+*.backup
+*~
+
+# Ambiente virtual Python (se usar)
+venv/
+env/
+.venv
+
+# Arquivos de projeto específicos
+dist/
+build/
+
+# Arquivos QGIS e Quarto (não necessários para o WebGIS)
+*.qgz
+*.qmd
+
+# Pastas de tutoriais (não necessários para publicação)
+tut/
+
+# Arquivos de texto temporários
+PROXIMOS_PASSOS.txt
+COMO_SALVAR_E_RECARREGAR.txt
+COMO_VERIFICAR_SALVOU.txt
+EXPLICACAO_SIMPLES.txt
+GUIA_INSTALACAO_PASSO_A_PASSO.txt

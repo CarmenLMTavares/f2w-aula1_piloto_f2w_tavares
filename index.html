@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGIS - Leaflet com Múltiplos Basemaps</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+          crossorigin=""/>
+    
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+            crossorigin=""></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            z-index: 1000;
+            max-width: 300px;
+        }
+        
+        .info-panel h2 {
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 18px;
+        }
+        
+        .info-panel p {
+            margin: 5px 0;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .basemap-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 3px;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+        
+        .basemap-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .basemap-btn {
+            padding: 10px 15px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+            text-align: left;
+            width: 100%;
+        }
+        
+        .basemap-btn:hover {
+            background: #45a049;
+        }
+        
+        .basemap-btn.active {
+            background: #2196F3;
+            font-weight: bold;
+        }
+        
+        .search-container {
+            margin-bottom: 15px;
+        }
+        
+        .search-box {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .search-input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .search-btn {
+            padding: 8px 15px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        
+        .search-btn:hover {
+            background: #1976D2;
+        }
+        
+        .quick-search-btn {
+            width: 100%;
+            padding: 8px 12px;
+            background: #FF9800;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            margin-top: 5px;
+            transition: background 0.3s;
+        }
+        
+        .quick-search-btn:hover {
+            background: #F57C00;
+        }
+        
+        .search-results {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e3f2fd;
+            border-radius: 3px;
+            font-size: 12px;
+            display: none;
+        }
+        
+        .layers-container {
+            border-top: 1px solid #e0e0e0;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+        
+        .layers-container label {
+            padding: 5px;
+            border-radius: 3px;
+            transition: background 0.2s;
+        }
+        
+        .layers-container label:hover {
+            background: #f5f5f5;
+        }
+        
+        /* Estilos para os popups do Leaflet */
+        .leaflet-popup-content-wrapper {
+            max-width: 400px !important;
+            min-width: 320px !important;
+        }
+        
+        .leaflet-popup-content {
+            margin: 15px 18px !important;
+            font-size: 13px !important;
+            line-height: 1.6 !important;
+        }
+        
+        .popup-content {
+            min-width: 300px;
+            max-width: 360px;
+        }
+        
+        .popup-row {
+            margin: 8px 0;
+            padding: 4px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .popup-row:last-child {
+            border-bottom: none;
+        }
+        
+        .popup-label {
+            font-weight: bold;
+            color: #333;
+            display: inline-block;
+            min-width: 110px;
+        }
+        
+        .popup-value {
+            color: #555;
+            word-wrap: break-word;
+            word-break: break-all;
+        }
+        
+        .popup-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #1976D2;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #1976D2;
+        }
+        
+        .popup-code {
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            background: #f5f5f5;
+            padding: 4px 6px;
+            border-radius: 3px;
+            word-break: break-all;
+            display: inline-block;
+            max-width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="info-panel">
+        <h2>🗺️ WebGIS</h2>
+        
+        <div class="search-container">
+            <p style="margin-bottom: 8px;"><strong>Buscar localização:</strong></p>
+            <div class="search-box">
+                <input type="text" class="search-input" id="search-input" placeholder="Digite uma cidade..." onkeypress="handleSearchKeyPress(event)">
+                <button class="search-btn" onclick="searchLocation()">🔍</button>
+            </div>
+            <button class="quick-search-btn" onclick="searchTavares()">📍 Buscar Tavares, RS</button>
+            <div class="search-results" id="search-results"></div>
+        </div>
+        
+        <div class="layers-container" style="margin-bottom: 15px;">
+            <p style="margin-bottom: 8px;"><strong>Camadas GeoJSON:</strong></p>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="toggle-tavares" onchange="toggleTavaresLayer()" style="cursor: pointer;">
+                    <span style="font-size: 13px;">🗺️ Município de Tavares</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="toggle-imoveis" onchange="toggleImoveisLayer()" style="cursor: pointer;">
+                    <span style="font-size: 13px;">🏡 Imóveis Rurais</span>
+                </label>
+            </div>
+        </div>
+        
+        <p>Selecione um mapa de fundo:</p>
+        <div class="basemap-info" id="basemap-info">
+            Mapa atual: OpenStreetMap
+        </div>
+        <div class="basemap-buttons">
+            <button class="basemap-btn active" onclick="changeBasemap('OpenStreetMap')">🗺️ OpenStreetMap</button>
+            <button class="basemap-btn" onclick="changeBasemap('CartoDB Positron')">🗺️ CartoDB Positron</button>
+            <button class="basemap-btn" onclick="changeBasemap('Esri World Imagery')">🛰️ Esri World Imagery</button>
+        </div>
+    </div>
+
+    <script>
+        // Inicializar o mapa centralizado em Tavares, RS
+        var map = L.map('map').setView([-31.325, -51.1], 11);
+
+        // Definir os 3 basemaps
+        var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19
+        });
+
+        var cartoDBLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 19
+        });
+
+        var esriImageryLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '&copy; <a href="https://www.esri.com/">Esri</a>',
+            maxZoom: 19
+        });
+
+        // Adicionar o mapa padrão (OpenStreetMap)
+        osmLayer.addTo(map);
+
+        // Criar objeto com os basemaps
+        var baseMaps = {
+            "OpenStreetMap": osmLayer,
+            "CartoDB Positron": cartoDBLayer,
+            "Esri World Imagery": esriImageryLayer
+        };
+
+        // Variável para armazenar a camada atual
+        var currentLayer = osmLayer;
+        
+        // Variável para armazenar o marcador de busca
+        var searchMarker = null;
+        
+        // Variáveis para armazenar as camadas GeoJSON
+        var tavaresLayer = null;
+        var imoveisLayer = null;
+        
+        // Função para buscar localização usando Nominatim (OpenStreetMap)
+        function searchLocation() {
+            var query = document.getElementById('search-input').value.trim();
+            if (!query) {
+                alert('Por favor, digite uma localização para buscar.');
+                return;
+            }
+            
+            performSearch(query);
+        }
+        
+        // Função para buscar Tavares, RS diretamente
+        function searchTavares() {
+            document.getElementById('search-input').value = 'Tavares, Rio Grande do Sul, Brasil';
+            performSearch('Tavares, Rio Grande do Sul, Brasil');
+        }
+        
+        // Função que executa a busca
+        function performSearch(query) {
+            var resultsDiv = document.getElementById('search-results');
+            resultsDiv.style.display = 'block';
+            resultsDiv.textContent = 'Buscando...';
+            
+            // Usar Nominatim API para geocodificação
+            var url = 'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(query) + '&limit=1&addressdetails=1';
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        var result = data[0];
+                        var lat = parseFloat(result.lat);
+                        var lon = parseFloat(result.lon);
+                        var displayName = result.display_name;
+                        
+                        // Remover marcador anterior se existir
+                        if (searchMarker) {
+                            map.removeLayer(searchMarker);
+                        }
+                        
+                        // Adicionar novo marcador
+                        searchMarker = L.marker([lat, lon]).addTo(map);
+                        searchMarker.bindPopup("<b>" + displayName + "</b><br>Lat: " + lat.toFixed(6) + ", Lon: " + lon.toFixed(6)).openPopup();
+                        
+                        // Centralizar o mapa na localização encontrada
+                        map.setView([lat, lon], 13);
+                        
+                        // Mostrar resultado
+                        resultsDiv.innerHTML = '<strong>✓ Encontrado:</strong><br>' + displayName;
+                        resultsDiv.style.background = '#c8e6c9';
+                    } else {
+                        resultsDiv.innerHTML = '<strong>✗ Não encontrado</strong><br>Tente outra busca.';
+                        resultsDiv.style.background = '#ffcdd2';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro na busca:', error);
+                    resultsDiv.innerHTML = '<strong>✗ Erro na busca</strong><br>Tente novamente.';
+                    resultsDiv.style.background = '#ffcdd2';
+                });
+        }
+        
+        // Função para buscar ao pressionar Enter
+        function handleSearchKeyPress(event) {
+            if (event.key === 'Enter') {
+                searchLocation();
+            }
+        }
+
+        // Função para trocar o basemap
+        function changeBasemap(basemapName) {
+            // Remover a camada atual
+            map.removeLayer(currentLayer);
+            
+            // Adicionar a nova camada
+            currentLayer = baseMaps[basemapName];
+            currentLayer.addTo(map);
+            
+            // Atualizar o painel informativo
+            document.getElementById('basemap-info').textContent = 'Mapa atual: ' + basemapName;
+            
+            // Atualizar os botões ativos
+            var buttons = document.querySelectorAll('.basemap-btn');
+            buttons.forEach(function(btn) {
+                btn.classList.remove('active');
+                if (btn.textContent.includes(basemapName)) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+
+        // Atualizar informação do basemap quando mudar pelo controle do Leaflet
+        map.on('baselayerchange', function(e) {
+            document.getElementById('basemap-info').textContent = 'Mapa atual: ' + e.name;
+            
+            // Atualizar os botões ativos
+            var buttons = document.querySelectorAll('.basemap-btn');
+            buttons.forEach(function(btn) {
+                btn.classList.remove('active');
+                if (btn.textContent.includes(e.name)) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            // Atualizar a camada atual
+            currentLayer = baseMaps[e.name];
+        });
+
+        // Função para estilizar o polígono de Tavares
+        function styleTavares(feature) {
+            return {
+                fillColor: '#cccccc',
+                fillOpacity: 0,
+                color: '#cccccc',
+                weight: 2,
+                opacity: 0.8
+            };
+        }
+        
+        // Função para estilizar os imóveis rurais
+        function styleImoveis(feature) {
+            return {
+                fillColor: '#ffeb3b',
+                fillOpacity: 0,
+                color: '#ffeb3b',
+                weight: 1.5,
+                opacity: 0.9
+            };
+        }
+        
+        // Função para criar popup de Tavares
+        function onEachFeatureTavares(feature, layer) {
+            if (feature.properties) {
+                var popupContent = '<div class="popup-content">';
+                popupContent += '<div class="popup-title">Município de Tavares</div>';
+                popupContent += '<div class="popup-row">';
+                popupContent += '<span class="popup-label">Estado:</span>';
+                popupContent += '<span class="popup-value">' + (feature.properties.NM_UF || feature.properties.SIGLA_UF || 'N/A') + '</span>';
+                popupContent += '</div>';
+                popupContent += '<div class="popup-row">';
+                popupContent += '<span class="popup-label">Área:</span>';
+                popupContent += '<span class="popup-value">' + (feature.properties.AREA_KM2 ? feature.properties.AREA_KM2.toFixed(2) + ' km²' : 'N/A') + '</span>';
+                popupContent += '</div>';
+                popupContent += '<div class="popup-row">';
+                popupContent += '<span class="popup-label">Código:</span>';
+                popupContent += '<span class="popup-value popup-code">' + (feature.properties.CD_MUN || 'N/A') + '</span>';
+                popupContent += '</div>';
+                popupContent += '</div>';
+                layer.bindPopup(popupContent, {maxWidth: 350, className: 'custom-popup'});
+            }
+        }
+        
+        // Função para criar popup de imóveis rurais
+        function onEachFeatureImoveis(feature, layer) {
+            if (feature.properties) {
+                var popupContent = '<div class="popup-content">';
+                popupContent += '<div class="popup-title">Imóvel Rural</div>';
+                
+                // Código do Tema
+                if (feature.properties.cod_tema) {
+                    popupContent += '<div class="popup-row">';
+                    popupContent += '<span class="popup-label">Código do Tema:</span>';
+                    popupContent += '<span class="popup-value">' + feature.properties.cod_tema + '</span>';
+                    popupContent += '</div>';
+                }
+                
+                // Nome do Tema
+                if (feature.properties.nom_tema) {
+                    popupContent += '<div class="popup-row">';
+                    popupContent += '<span class="popup-label">Nome do Tema:</span>';
+                    popupContent += '<span class="popup-value">' + feature.properties.nom_tema + '</span>';
+                    popupContent += '</div>';
+                }
+                
+                // Código do Imóvel
+                if (feature.properties.cod_imovel) {
+                    popupContent += '<div class="popup-row">';
+                    popupContent += '<span class="popup-label">Código do Imóvel:</span>';
+                    popupContent += '<div class="popup-value" style="margin-top: 4px;">';
+                    popupContent += '<span class="popup-code">' + feature.properties.cod_imovel + '</span>';
+                    popupContent += '</div>';
+                    popupContent += '</div>';
+                }
+                
+                // Módulo Fiscal
+                popupContent += '<div class="popup-row">';
+                popupContent += '<span class="popup-label">Módulo Fiscal:</span>';
+                popupContent += '<span class="popup-value">' + (feature.properties.mod_fiscal ? feature.properties.mod_fiscal.toFixed(4) : 'N/A') + '</span>';
+                popupContent += '</div>';
+                
+                // Área
+                popupContent += '<div class="popup-row">';
+                popupContent += '<span class="popup-label">Área:</span>';
+                popupContent += '<span class="popup-value">' + (feature.properties.num_area ? feature.properties.num_area.toFixed(4) + ' hectares' : 'N/A') + '</span>';
+                popupContent += '</div>';
+                
+                // Status
+                popupContent += '<div class="popup-row">';
+                popupContent += '<span class="popup-label">Status:</span>';
+                popupContent += '<span class="popup-value">' + (feature.properties.ind_status || 'N/A') + '</span>';
+                popupContent += '</div>';
+                
+                // Tipo
+                popupContent += '<div class="popup-row">';
+                popupContent += '<span class="popup-label">Tipo:</span>';
+                popupContent += '<span class="popup-value">' + (feature.properties.ind_tipo || 'N/A') + '</span>';
+                popupContent += '</div>';
+                
+                // Condição
+                popupContent += '<div class="popup-row">';
+                popupContent += '<span class="popup-label">Condição:</span>';
+                popupContent += '<span class="popup-value">' + (feature.properties.des_condic || 'N/A') + '</span>';
+                popupContent += '</div>';
+                
+                // Município
+                popupContent += '<div class="popup-row">';
+                popupContent += '<span class="popup-label">Município:</span>';
+                popupContent += '<span class="popup-value">' + (feature.properties.municipio || 'N/A') + '</span>';
+                popupContent += '</div>';
+                
+                // Código do Estado
+                popupContent += '<div class="popup-row">';
+                popupContent += '<span class="popup-label">Código do Estado:</span>';
+                popupContent += '<span class="popup-value">' + (feature.properties.cod_estado || 'N/A') + '</span>';
+                popupContent += '</div>';
+                
+                // Data de Criação
+                if (feature.properties.dat_criaca) {
+                    popupContent += '<div class="popup-row">';
+                    popupContent += '<span class="popup-label">Data de Criação:</span>';
+                    popupContent += '<span class="popup-value">' + feature.properties.dat_criaca + '</span>';
+                    popupContent += '</div>';
+                }
+                
+                // Data de Atualização
+                if (feature.properties.dat_atuali) {
+                    popupContent += '<div class="popup-row">';
+                    popupContent += '<span class="popup-label">Data de Atualização:</span>';
+                    popupContent += '<span class="popup-value">' + feature.properties.dat_atuali + '</span>';
+                    popupContent += '</div>';
+                }
+                
+                popupContent += '</div>';
+                layer.bindPopup(popupContent, {maxWidth: 380, className: 'custom-popup'});
+            }
+        }
+        
+        // Carregar camada do município de Tavares
+        function loadTavaresLayer() {
+            if (tavaresLayer) {
+                return; // Já carregada
+            }
+            
+            fetch('data/tavares.geojson')
+                .then(response => response.json())
+                .then(data => {
+                    tavaresLayer = L.geoJSON(data, {
+                        style: styleTavares,
+                        onEachFeature: onEachFeatureTavares
+                    });
+                    
+                    // Adicionar ao mapa se o checkbox estiver marcado
+                    if (document.getElementById('toggle-tavares').checked) {
+                        tavaresLayer.addTo(map);
+                        map.fitBounds(tavaresLayer.getBounds());
+                    }
+                    
+                    updateLayerControl();
+                })
+                .catch(error => {
+                    console.error('Erro ao carregar camada de Tavares:', error);
+                    alert('Erro ao carregar camada de Tavares. Verifique se o arquivo existe.');
+                });
+        }
+        
+        // Carregar camada de imóveis rurais
+        function loadImoveisLayer() {
+            if (imoveisLayer) {
+                return; // Já carregada
+            }
+            
+            fetch('data/imoveis_rurais_tavares.geojson')
+                .then(response => response.json())
+                .then(data => {
+                    imoveisLayer = L.geoJSON(data, {
+                        style: styleImoveis,
+                        onEachFeature: onEachFeatureImoveis
+                    });
+                    
+                    // Adicionar ao mapa se o checkbox estiver marcado
+                    if (document.getElementById('toggle-imoveis').checked) {
+                        imoveisLayer.addTo(map);
+                        // Ajustar zoom apenas se Tavares não estiver carregado
+                        if (!tavaresLayer || !map.hasLayer(tavaresLayer)) {
+                            map.fitBounds(imoveisLayer.getBounds());
+                        }
+                    }
+                    
+                    updateLayerControl();
+                })
+                .catch(error => {
+                    console.error('Erro ao carregar camada de imóveis:', error);
+                    alert('Erro ao carregar camada de imóveis rurais. Verifique se o arquivo existe.');
+                });
+        }
+        
+        // Variável para controlar se os eventos já foram registrados
+        var eventsRegistered = false;
+        
+        // Função para atualizar o controle de camadas do Leaflet
+        function updateLayerControl() {
+            var overlayMaps = {};
+            if (tavaresLayer) {
+                overlayMaps["Município de Tavares"] = tavaresLayer;
+            }
+            if (imoveisLayer) {
+                overlayMaps["Imóveis Rurais"] = imoveisLayer;
+            }
+            
+            // Remover controle antigo se existir
+            if (map.overlayControl) {
+                map.removeControl(map.overlayControl);
+            }
+            
+            // Adicionar novo controle
+            map.overlayControl = L.control.layers(baseMaps, overlayMaps, {position: 'topleft'}).addTo(map);
+            
+            // Sincronizar checkboxes quando usar o controle do Leaflet (apenas uma vez)
+            if (!eventsRegistered) {
+                map.on('overlayadd', function(e) {
+                    if (e.name === "Município de Tavares") {
+                        document.getElementById('toggle-tavares').checked = true;
+                    }
+                    if (e.name === "Imóveis Rurais") {
+                        document.getElementById('toggle-imoveis').checked = true;
+                    }
+                });
+                
+                map.on('overlayremove', function(e) {
+                    if (e.name === "Município de Tavares") {
+                        document.getElementById('toggle-tavares').checked = false;
+                    }
+                    if (e.name === "Imóveis Rurais") {
+                        document.getElementById('toggle-imoveis').checked = false;
+                    }
+                });
+                eventsRegistered = true;
+            }
+        }
+        
+        // Função para alternar camada de Tavares
+        function toggleTavaresLayer() {
+            var checkbox = document.getElementById('toggle-tavares');
+            if (!tavaresLayer) {
+                loadTavaresLayer();
+                return;
+            }
+            
+            if (checkbox.checked) {
+                tavaresLayer.addTo(map);
+                map.fitBounds(tavaresLayer.getBounds());
+            } else {
+                map.removeLayer(tavaresLayer);
+            }
+        }
+        
+        // Função para alternar camada de imóveis
+        function toggleImoveisLayer() {
+            var checkbox = document.getElementById('toggle-imoveis');
+            if (!imoveisLayer) {
+                loadImoveisLayer();
+                return;
+            }
+            
+            if (checkbox.checked) {
+                imoveisLayer.addTo(map);
+            } else {
+                map.removeLayer(imoveisLayer);
+            }
+        }
+
+        // Criar controle inicial de camadas (sem overlays ainda)
+        map.overlayControl = L.control.layers(baseMaps, null, {position: 'topleft'}).addTo(map);
+
+        // Adicionar controle de escala
+        L.control.scale({
+            metric: true,
+            imperial: false
+        }).addTo(map);
+    </script>
+</body>
+</html>
+
+
